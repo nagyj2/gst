@@ -429,6 +429,7 @@ class SuffixTree:
         #!APCFER2C2
         self._debugPrint('APCFER2C2')
         self.aNode = self.aNode.getSuffixLink()
+        assert(self.aNode != None)
 
   def _walkDownTree(self: SuffixTree, node: SuffixTreeNode) -> bool:
     # Walk down node depending on activePoint
@@ -439,6 +440,7 @@ class SuffixTree:
       self.aEdge += node.getEdgeLength() # next character
       self.aLength -= node.getEdgeLength()
       self.aNode = node
+      assert(self.aNode != None)
       return True
     return False
 
@@ -470,7 +472,8 @@ class SuffixTree:
     if not leaf:
       node.end = end
     # Set defaults
-    # node.setSuffixIndex(-1) # internal node
+    node.setSuffixLink(self.root)
+    node.setSuffixIndex(-1) # internal node
     return node
 
   def _setSuffixIndexes(self: SuffixTree | None, node: SuffixTreeNode, labelHeight: int) -> None:
@@ -522,6 +525,24 @@ class SuffixTree:
     #   string = self.string[-1]
     return string
 
+  def printSuffixTree(self: SuffixTree, node: SuffixTreeNode | None, indent: int = 0) -> None:
+    '''Print the suffix tree as a simplified tree'''
+    if node == None:
+      return
+
+    link = node.getSuffixLink()
+    print('\t' * indent + f'\'{self.getSubstringFromNode(node)}\', {node} -> ', end='')
+    if link == self.root:
+      print(f'ROOT')
+    elif link != None:
+      print(f'\'{self.getSubstringFromNode(link)}\', {link}')
+    else:
+      print(f'None')
+
+    for c in SuffixTreeNode.Alphabet:
+      child = node.getChild(c)
+      self.printSuffixTree(child, indent + 1)
+
   def _getSuffixArray(self: SuffixTree, node: SuffixTreeNode | None, lst: list[str] | None = None) -> list[str]:
     '''Recursive function to build suffix array in lst'''
     # If node is empty, return input list
@@ -548,21 +569,8 @@ class SuffixTree:
     '''Returns the suffix array for the suffix tree'''
     return self._getSuffixArray(self.root)
 
-  def printSuffixTree(self: SuffixTree, node: SuffixTreeNode | None, indent: int = 0) -> None:
-    '''Print the suffix tree as a simplified tree'''
-    if node == None:
-      return
 
-    link = node.getSuffixLink()
-    print('\t' * indent + f'\'{self.getSubstringFromNode(node)}\', {node} -> ', end='')
-    if link != None:
-      print(f'\'{self.getSubstringFromNode(link)}\', {link}')
-    else:
-      print(f'None')
 
-    for c in SuffixTreeNode.Alphabet:
-      child = node.getChild(c)
-      self.printSuffixTree(child, indent + 1)
 
 
 # _testSuffixTreeNode()
