@@ -9,8 +9,8 @@ import string as stringlib          # access sets of strings for alphabet creati
 
 # Global variables
 TERMINAL: str   = '$'
-LEAFEND:  int   = -1  # Required so SuffixTree and SuffixTreeNode can access. Could be placed inside SuffixTree but then so would SuffixTreeNode, reducing usability and readability
-DEBUG:    bool  = False
+LEAFEND:  int   = -1    # Required here so SuffixTree and SuffixTreeNode can access. Could be placed inside SuffixTree but then so would SuffixTreeNode, reducing usability and readability
+DEBUG:    bool  = False # Enables debug prints highlighting computations and steps taken
 
 class SuffixTreeNode:
 
@@ -33,10 +33,10 @@ class SuffixTreeNode:
     self._numchildren:  int                   = 0 # track individually to for performance and simplicity
     self._suffixLink:   SuffixTreeNode | None = None
     self._start:        int                   = 0
-    # For leaves, end must be equal to last tree position
+    # For leaves end must be equal to last tree position. Tracked by _leaf
     self._end:          int                   = -1
     self._leaf:         bool                  = leaf # once a leaf, always a leaf
-    # index of suffix in path from root to leaf. Non-leaves = -1
+    # Index of suffix in path from root to leaf. Non-leaves = -1
     self._suffixIndex:  int                   = -1
 
   def __repr__(self: SuffixTreeNode) -> str:
@@ -69,7 +69,7 @@ class SuffixTreeNode:
   def end(self: SuffixTreeNode, val: int) -> None:
     '''Set the end index of this node'''
     if self.isLeaf():
-      raise Exception('Leaf nodes cannot be manually updated')
+      raise Exception('Leaf node end cannot be manually updated')
     if type(val) not in (int,):
       raise Exception(f'Unexpected type for end value, {type(val)}')
     self._end = val
@@ -93,13 +93,16 @@ class SuffixTreeNode:
   def setSuffixLink(self: SuffixTreeNode, node: SuffixTreeNode | None, allow_none: bool = False) -> None:
     '''Set suffix link for this node'''
     if type(node) not in (SuffixTreeNode,) and (type(node) in (None,) and not allow_none):
+      # only allow None if allow_none == True, which is only for root setup
       raise Exception(f'Unexpected type for suffix link, {type(node)}')
     self._suffixLink = node
 
   def getSuffixIndex(self: SuffixTreeNode) -> int:
+    '''Get the suffix index for this node'''
     return self._suffixIndex
 
   def setSuffixIndex(self: SuffixTreeNode, i: int) -> None:
+    '''Set the suffix index for this node'''
     if type(i) not in (int,):
       raise Exception(f'Unexpected type for suffix index, {type(i)}')
     self._suffixIndex = i
@@ -472,11 +475,12 @@ class SuffixTree:
     if not leaf:
       node.end = end
     # Set defaults
-    node.setSuffixLink(self.root)
-    node.setSuffixIndex(-1) # internal node
+    node.setSuffixLink(self.root) # all links go to root. Might get updated with other nodes during execution
+    node.setSuffixIndex(-1) # internal node by default. Update at end
     return node
 
   def _setSuffixIndexes(self: SuffixTree | None, node: SuffixTreeNode, labelHeight: int) -> None:
+    '''Sets the suffix index for each leaf node in the tree. Internal nodes keep their default index. Done using DFS'''
     if node == None:
       return
 
@@ -486,18 +490,22 @@ class SuffixTree:
     leaf = True
     for c in SuffixTreeNode.Alphabet:
       child = node.getChild(c)
+      # Check for any children
       if child != None:
         if leaf and node.start != -1:
           self._debugPrint(f' [{node.getSuffixIndex()}]')
 
+        # A child exists, so update that this node is not a leaf and recurse on that child
         leaf = False
         self._setSuffixIndexes(child, labelHeight + child.getEdgeLength())
 
     if leaf:
+      # This node has no children, so update its suffix index
       node.setSuffixIndex(self._size - labelHeight)
       self._debugPrint(f' [{node.getSuffixIndex()}]')
 
   def getSubstring(self: SuffixTree, i: int, j: int) -> str:
+    '''Get a substring of the input string based on start and stop indicies (inclusive)'''
     string = ""
     # Check if root since range(-1, 0) results in [-1] which will be '$'
     if i == -1 and j == -1:
@@ -507,33 +515,18 @@ class SuffixTree:
     return string
 
   def getSubstringFromNode(self: SuffixTree, node: SuffixTreeNode) -> str:
+    '''Get a substring from a suffix tree node'''
     return self.getSubstring(node.start, node.end)
 
-  def getSuffix(self: SuffixTree, j: int) -> str:
-    return self.string[j:]
-
-  def getSuffixFromNode(self: SuffixTree, node: SuffixTreeNode) -> str:
-    return self.getSuffix(node.start)
-
-  def getPathString(self: SuffixTree, node: SuffixTreeNode) -> str:
-    '''Print entire label path from root to node'''
-    string = ""
-    while node != None:
-      string = self.getSubstringFromNode(node) + string
-      node = node.getParent()
-    # if string == '': # root will have empty string due to -1 start and end
-    #   string = self.string[-1]
-    return string
-
   def printSuffixTree(self: SuffixTree, node: SuffixTreeNode | None, indent: int = 0) -> None:
-    '''Print the suffix tree as a simplified tree'''
+    '''Print the suffix tree as a simplified tree. Done using DFS'''
     if node == None:
       return
 
     link = node.getSuffixLink()
     print('\t' * indent + f'\'{self.getSubstringFromNode(node)}\', {node} -> ', end='')
     if link == self.root:
-      print(f'ROOT')
+      print(f'ROOT') # shorthand for root
     elif link != None:
       print(f'\'{self.getSubstringFromNode(link)}\', {link}')
     else:
@@ -554,8 +547,8 @@ class SuffixTree:
     if lst == None:
       lst = []
 
-    # Add self
-    if node.getSuffixIndex() >= 0:
+    # Add self if you have a suffix index
+    if node.isLeaf(): # same as getSuffixIndex() >= 0
       lst.append(node.getSuffixIndex())
 
     # Add each child to lst
@@ -571,25 +564,26 @@ class SuffixTree:
 
   def getStringSuffixArray(self: SuffixTree) -> list[str]:
     '''Returns the suffixes that make up the suffix array'''
-    sa: list[str] = self.getSuffixArray()
-    return [self.string[pos:] for pos in sa]
+    return [self.string[pos:] for pos in self.getSuffixArray()]
 
   def getInverseSuffixArray(self: SuffixTree) -> list[int]:
     '''Returns the suffix array for the suffix tree'''
+
     sa = self.getSuffixArray()
-    inv_sa: list[int] = [0] * len(sa)
+    isa = [0] * len(sa)
     for ind, pos in enumerate(sa):
-      inv_sa[pos] = ind
-    return inv_sa
+      isa[pos] = ind
+    return isa
 
   def getLCPArray(self: SuffixTree) -> list[int]:
+    '''Returns the LCP array. Uses Kasai's algorithm'''
     sa = self.getSuffixArray()
-    inv_sa = self.getInverseSuffixArray()
+    isa = self.getInverseSuffixArray()
     lcp: list[int] = [0] * len(sa)
 
     l = 0
     for i in range(self._size-1):
-      k = inv_sa[i]
+      k = isa[i]
       j = sa[k-1] # j = phi(i)
       while self.string[i+l] == self.string[j+l]:
         l += 1
