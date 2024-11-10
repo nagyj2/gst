@@ -3,8 +3,9 @@
 # Visualizer: https://brenden.github.io/ukkonen-animation/
 #!! Inspiration: https://www.geeksforgeeks.org/ukkonens-suffix-tree-construction-part-1/
 
-from __future__ import annotations
-import string as stringlib
+from __future__ import annotations  # type annotations
+from operator import attrgetter     # used to determine equality of nodes
+import string as stringlib          # access sets of strings for alphabet creation
 
 # Global variables
 TERMINAL: str   = '$'
@@ -41,19 +42,19 @@ class SuffixTreeNode:
     '''Get string representation of this node'''
     return f'SuffixTreeNode({self.start}:{self.end}, children={self.getNumChildren()})'
 
-  def __eq__(self: SuffixTreeNode, node: any) -> bool:
+  def __eq__(self: SuffixTreeNode, other: any) -> bool:
     '''Compare this node for equality to another object'''
-    if type(node) not in (SuffixTreeNode,):
+    if type(other) not in (SuffixTreeNode,):
       return False
-    assert(type(node) == SuffixTreeNode)
-    return self.start == node.start and self.end == node.end and self.getSuffixLink == node.getSuffixLink()
+    atg = attrgetter('_start', '_end', '_suffixLink')
+    return atg(self) == atg(other)
 
-  def __ne__(self: SuffixTreeNode, node: any) -> bool:
+  def __ne__(self: SuffixTreeNode, other: any) -> bool:
     '''Compare this node for inequality to another object'''
-    if type(node) not in (SuffixTreeNode,):
-      return True
-    assert(type(node) == SuffixTreeNode)
-    return self.start != node.start or self.end != node.end or self.getSuffixLink != node.getSuffixLink()
+    if type(other) not in (SuffixTreeNode,):
+      return False
+    atg = attrgetter('_start', '_end', '_suffixLink')
+    return atg(self) != atg(other)
 
   @property
   def end(self: SuffixTreeNode) -> int:
