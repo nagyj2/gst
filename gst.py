@@ -300,11 +300,19 @@ class SuffixTree:
     # APCFALZ: Change required for activeLength of 0.
       # Next character we look for is current one being processed
 
+    # Trick 1: Compress node edges so one node jump can pass many characters
+      # Implemented through SuffixTreeNode's start and end properties
+    # Trick 2: When Rule 3 applies, stop processing
+      # If a suffix ends in the path of another suffix, it and all other suffixes of the current phase will end in that same path
+    # Trick 3: For phase i, all leaf nodes will be of (start,i) then in phase i+1, they will be (start,i+1)
+      # Once a leaf is created, it always stays a leaf and Rule 1 will always apply to it
+
     global LEAFEND
     self._phase = pos # update phase for printing
 
     self._debugPrint(f'========== Phase {pos+1} \'{self.string[pos]}\' / {[self.string[pos-i:pos+1] for i in range(pos, -1, -1)]} =========')
 
+    #! TRICK 3
     LEAFEND = pos # All leaves track this value by reference so this performs all Rule 1 updates
     self._remaining_suffix_count += 1 # New suffix exists and needs to be added to the tree
 
@@ -341,6 +349,7 @@ class SuffixTree:
         # Get next node from active node taking active edge transition
         next_node = self.aNode.getChild(self.aEdgeChar)
         # See if aLength brings us to or past the next node
+        #! TRICK 1
         if self._walkDownTree(next_node):
           # Start extension from new activePoint and restart this iteration
           continue
@@ -355,7 +364,7 @@ class SuffixTree:
           #! APCFER3
           self._debugPrint('APCFER3')
           self.aLength += 1
-          # Stop phase early
+          #! TRICK 2
           break
 
         #! Rule 2 (new leaf node requiring splitting of an internal node)
