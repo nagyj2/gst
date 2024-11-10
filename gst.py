@@ -565,10 +565,38 @@ class SuffixTree:
 
     return lst
 
-  def getSuffixArray(self: SuffixTree) -> list[str]:
+  def getSuffixArray(self: SuffixTree) -> list[int]:
     '''Returns the suffix array for the suffix tree'''
-    return self._getSuffixArray(self.root)
+    return self._getSuffixArray(self.root)[1:] # remove first element b/c it is always |S|
 
+  def getStringSuffixArray(self: SuffixTree) -> list[str]:
+    '''Returns the suffixes that make up the suffix array'''
+    sa: list[str] = self.getSuffixArray()
+    return [self.string[pos:] for pos in sa]
+
+  def getInverseSuffixArray(self: SuffixTree) -> list[int]:
+    '''Returns the suffix array for the suffix tree'''
+    sa = self.getSuffixArray()
+    inv_sa: list[int] = [0] * len(sa)
+    for ind, pos in enumerate(sa):
+      inv_sa[pos] = ind
+    return inv_sa
+
+  def getLCPArray(self: SuffixTree) -> list[int]:
+    sa = self.getSuffixArray()
+    inv_sa = self.getInverseSuffixArray()
+    lcp: list[int] = [0] * len(sa)
+
+    l = 0
+    for i in range(self._size-1):
+      k = inv_sa[i]
+      j = sa[k-1] # j = phi(i)
+      while self.string[i+l] == self.string[j+l]:
+        l += 1
+      lcp[k] = l
+      if l > 0:
+        l -= 1
+    return lcp
 
 
 
