@@ -605,16 +605,23 @@ class SuffixTree:
 if __name__ == '__main__':
   print(f'Alphabet: {SuffixTreeNode.Alphabet}')
 
-
-  string = 'abbc'
+  string = input('Enter a string to compute GST of: ')
+  # string = 'abbc'
   # string = 'abcabxabcd'
+  # string = 'geeksforgeeks'
+  # string = 'good'
+  # string = 'gatagaca'
 
   tree = SuffixTree(string)
 
   print(f' == String \'{tree.string}\' ==')
   print(f"# Nodes = {tree.count}")
+
   print(f' == Suffix Tree ==')
   tree.printSuffixTree(tree.root)
-  print(f' == String \'{tree.string}\' ==')
-  print(tree.getSuffixArray())
-  tree.printSuffixArray()
+
+  print(f' == Metadata Arrays ==')
+  print(f'Suffix Array: {tree.getSuffixArray()}')
+  print(f'Str.S. Array: {tree.getStringSuffixArray()}')
+  print(f'Inv Suffix:   {tree.getInverseSuffixArray()}')
+  print(f'LCP Array:    {tree.getLCPArray()}')
