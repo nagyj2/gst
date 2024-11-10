@@ -203,7 +203,10 @@ class SuffixTree:
     # Active length (how far we need to walk down during traversal)
     self.aLength:                 int = 0
     # Remaining suffix count. How many suffixes need to be added
-    self.remaining_suffix_count:  int = 0
+    self._remaining_suffix_count: int = 0
+
+    # Printing components (do not effect functionality but help print state)
+    self._phase: int = -1 # Current phase
 
     self._createSuffixTree()
 
@@ -234,6 +237,9 @@ class SuffixTree:
       return
     print(s)
 
+  def debugPrintExtension(self: SuffixTree, n: int) -> None:
+    self._debugPrint(f' == Extension {n}: \'{self.string[n-1:self._phase+1]}\' ({self._remaining_suffix_count} left after Rule 1) ==')
+
   def charAt(self: SuffixTree, i: int) -> str:
     '''Get active character'''
     return self.string[i]
@@ -245,8 +251,15 @@ class SuffixTree:
       # For each extension, the considered suffixes increase by 1
       self._extendSuffixTree(i)
 
-      if (pause and input('press q to stop').lower() == 'q'):
-        break
+      if (pause):
+        self._debugPrint(f' ==== End of Phase {self._phase+1} State ====')
+        self._debugPrint(f'Active Node:   {self.aNode}')
+        self._debugPrint(f'Active Edge:   \'{self.aEdgeChar}\'/{self.aEdge}')
+        self._debugPrint(f'Active Length: {self.aLength}')
+        self._debugPrint(f'Suffixes Left: {self._remaining_suffix_count}')
+        self.printSuffixTree(self.root)
+        if (input('Enter \'q\' to stop: ').lower() == 'q'):
+          break
 
   def _extendSuffixTree(self: SuffixTree, pos: int) -> None:
     '''Perform the ith extension phase to the suffix tree'''
@@ -274,7 +287,7 @@ class SuffixTree:
     # uneccessary traversal in the Suffix Tree, maintaining linear construction time
     # APCFER2C1: Change required for Rule 2, case 1 - activeNode is root and activeLength>0
       # Decrement activeLength by 1
-      #? Set activeEdge to position `pos - remaining_suffix_count + 1`
+      #? Set activeEdge to position `pos - _remaining_suffix_count + 1`
     # APCFER2C2: Change required for Rule 2, case 2 - activeNode is not root
       # Traverse suffix link from activeNode to get new activeNode
       #? Start next extension from there
@@ -288,19 +301,22 @@ class SuffixTree:
       # Next character we look for is current one being processed
 
     global LEAFEND
-    self._debugPrint(f'===== Phase {pos+1} =====')
+    self._phase = pos # update phase for printing
+
+    self._debugPrint(f'========== Phase {pos+1} \'{self.string[pos]}\' / {[self.string[pos-i:pos+1] for i in range(pos, -1, -1)]} =========')
+
+    LEAFEND = pos # All leaves track this value by reference so this performs all Rule 1 updates
+    self._remaining_suffix_count += 1 # New suffix exists and needs to be added to the tree
 
     #! RULE 1 (add character to exisiting node)
-    LEAFEND = pos # All leaves track this value by reference so this performs all Rule 1 updates
-    self.remaining_suffix_count += 1 # New suffix exists and needs to be added to the tree
+    ext = self.printRule1Changes(self.root, 1) # Extension number for current phase
+
     last_new_node: SuffixTreeNode | None = None # Internal node waiting for suffix link update
 
-    # Extension number for current phase
-    ext = self.printRule1Changes(self.root, 1)
-
-    # Go until rule 3 or all suffixes that need to be added are added
-    while self.remaining_suffix_count > 0:
-      self._debugPrint(f' == Extension {ext} ({self.remaining_suffix_count} remaining) ==')
+    # Go until Rule 3 or all suffixes that need to be added are added
+    while self._remaining_suffix_count > 0:
+      # Print all non-Rule 1 suffixes required to be added
+      self.debugPrintExtension(ext)
       ext += 1
 
       # Have we reached our node? If so, look at current character as the desired edge
@@ -324,9 +340,9 @@ class SuffixTree:
       else:
         # Get next node from active node taking active edge transition
         next_node = self.aNode.getChild(self.aEdgeChar)
-        # Walk down the tree to next location given by activePoint
+        # See if aLength brings us to or past the next node
         if self._walkDownTree(next_node):
-          # Start extension from new activePoint
+          # Start extension from new activePoint and restart this iteration
           continue
 
         if self.string[next_node.start + self.aLength] == self.string[pos]:
@@ -365,15 +381,15 @@ class SuffixTree:
         last_new_node = split_node
 
       # A suffix got added to the tree, decrement number of suffixes to be added
-      self.remaining_suffix_count -= 1
+      self._remaining_suffix_count -= 1
       if self.aNode == self.root and self.aLength > 0:
         #! APCFER2C1
         self._debugPrint('APCFER2C1')
         self.aLength -= 1
-        self.aEdge = pos - self.remaining_suffix_count + 1
+        self.aEdge = pos - self._remaining_suffix_count + 1
       elif self.aNode != self.root:
         #!APCFER2C2
-        self._debugPrint('APCFER2C1')
+        self._debugPrint('APCFER2C2')
         self.aNode = self.aNode.getSuffixLink()
 
   def _walkDownTree(self: SuffixTree, node: SuffixTreeNode) -> bool:
@@ -485,7 +501,7 @@ class SuffixTree:
 
     # If node is a leaf, it is updated to reflect the new lowest point
     if node.isLeaf():
-      self._debugPrint(f' == Extension {i} ({self.remaining_suffix_count} remaining) ==')
+      self.debugPrintExtension(i)
       self._debugPrint('Rule 1')
       return i + 1
 
