@@ -96,13 +96,13 @@ class SuffixTreeNode:
       raise Exception(f'Unexpected type for suffix link, {type(node)}')
     self._suffixLink = node
 
-  # def getSuffixIndex(self: SuffixTreeNode) -> int:
-  #   return self._suffixIndex
+  def getSuffixIndex(self: SuffixTreeNode) -> int:
+    return self._suffixIndex
 
-  # def setSuffixIndex(self: SuffixTreeNode, i: int) -> None:
-  #   if type(i) not in (int,):
-  #     raise Exception(f'Unexpected type for suffix index, {type(i)}')
-  #   self._suffixIndex = i
+  def setSuffixIndex(self: SuffixTreeNode, i: int) -> None:
+    if type(i) not in (int,):
+      raise Exception(f'Unexpected type for suffix index, {type(i)}')
+    self._suffixIndex = i
 
   def getChild(self: SuffixTreeNode, c: str) -> SuffixTreeNode | None:
     '''Get a child for a specific edge'''
@@ -287,6 +287,9 @@ class SuffixTree:
         if (input('Enter \'q\' to stop: ').lower() == 'q'):
           break
 
+    self._debugPrint(f' ===== Assigning Suffix Indicies =====')
+    self._setSuffixIndexes(self.root, 0) #~ To match 1-indexing, start at 1
+
   def _extendSuffixTree(self: SuffixTree, pos: int) -> None:
     '''Perform the ith extension phase to the suffix tree'''
 
@@ -470,6 +473,27 @@ class SuffixTree:
     # node.setSuffixIndex(-1) # internal node
     return node
 
+  def _setSuffixIndexes(self: SuffixTree | None, node: SuffixTreeNode, labelHeight: int) -> None:
+    if node == None:
+      return
+
+    if not node.isRoot():
+      self._debugPrint(self.getSubstringFromNode(node))
+
+    leaf = True
+    for c in SuffixTreeNode.Alphabet:
+      child = node.getChild(c)
+      if child != None:
+        if leaf and node.start != -1:
+          self._debugPrint(f' [{node.getSuffixIndex()}]')
+
+        leaf = False
+        self._setSuffixIndexes(child, labelHeight + child.getEdgeLength())
+
+    if leaf:
+      node.setSuffixIndex(self._size - labelHeight)
+      self._debugPrint(f' [{node.getSuffixIndex()}]')
+
   def getSubstring(self: SuffixTree, i: int, j: int) -> str:
     string = ""
     # Check if root since range(-1, 0) results in [-1] which will be '$'
@@ -500,17 +524,18 @@ class SuffixTree:
 
   def _getSuffixArray(self: SuffixTree, node: SuffixTreeNode | None, lst: list[str] | None = None) -> list[str]:
     '''Recursive function to build suffix array in lst'''
+    # If node is empty, return input list
+    if node == None:
+      return lst
+
     # Check if list was given. If not, make an empty one
     # Do not give default value 'lst = []' in method declaration because Python is weird about that
     if lst == None:
       lst = []
 
-    # If node is empty, return input list
-    if node == None:
-      return lst
-
     # Add self
-    lst.append(self.getSuffixFromNode(node))
+    if node.getSuffixIndex() >= 0:
+      lst.append(node.getSuffixIndex())
 
     # Add each child to lst
     for c in SuffixTreeNode.Alphabet:
