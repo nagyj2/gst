@@ -29,7 +29,7 @@ class SuffixTreeNode:
     # Dict for determing which child depending on first char in label
     self._children:     dict[str, SuffixTreeNode | None] = {c: None for c in SuffixTreeNode.Alphabet}
     self._parent:       SuffixTreeNode        = None
-    self._numchildren:  int                   = 0
+    self._numchildren:  int                   = 0 # track individually to for performance and simplicity
     self._suffixLink:   SuffixTreeNode | None = None
     self._start:        int                   = 0
     # For leaves, end must be equal to last tree position
@@ -44,15 +44,15 @@ class SuffixTreeNode:
 
   def __eq__(self: SuffixTreeNode, other: any) -> bool:
     '''Compare this node for equality to another object'''
-    if type(other) not in (SuffixTreeNode,):
+    if not isinstance(other, SuffixTreeNode):
       return False
     atg = attrgetter('_start', '_end', '_suffixLink')
     return atg(self) == atg(other)
 
   def __ne__(self: SuffixTreeNode, other: any) -> bool:
     '''Compare this node for inequality to another object'''
-    if type(other) not in (SuffixTreeNode,):
-      return False
+    if not isinstance(other, SuffixTreeNode):
+      return True
     atg = attrgetter('_start', '_end', '_suffixLink')
     return atg(self) != atg(other)
 
@@ -191,7 +191,7 @@ class SuffixTree:
       print(f'Adding terminal, new string is \'{string}\'')
 
     self._string: str             = string # Store string representation
-    self._size:   int             = len(self.string) # Size of input string
+    self._size:   int             = len(self.string) - 1 # Size of input string (excluding terminal)
     self._count:  int             = 0 # Number of nodes in the tree
     self.root:    SuffixTreeNode  = self._createRoot() # Tree root node (start = end = -1)
 
