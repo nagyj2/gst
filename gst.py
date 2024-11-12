@@ -8,11 +8,19 @@ from operator import attrgetter     # used to determine equality of nodes
 import string as stringlib          # access sets of strings for alphabet creation
 
 # Global variables
-TERMINAL: str   = '$'
-ALPHABET: str   = TERMINAL + stringlib.ascii_lowercase #! ORDER MATTERS
+TERMINAL: str   = stringlib.ascii_uppercase # Size limits the number of input words due to each needing a unique terminal
+NONTERM:  str   = stringlib.ascii_lowercase # Letters allowed in words
+ALPHABET: str   = TERMINAL + NONTERM #! ORDER MATTERS
 LEAFEND:  int   = -1    # Required here so SuffixTree and SuffixTreeNode can access. Could be placed inside SuffixTree but then so would SuffixTreeNode, reducing usability and readability
 DEBUG:    bool  = False # Enables debug prints highlighting computations and steps taken
 
+def isValidWord(s: str) -> bool:
+  '''Return whether the string is a valid word'''
+  global NONTERM
+  for c in s:
+    if c not in NONTERM:
+      return False
+  return True
 
 def isInAlphabet(s: str) -> bool:
   '''Return whether all characters in s are within the alphabet'''
@@ -59,7 +67,8 @@ class SuffixNodeDict(dict):
       raise IndexError(f'edges must be characters within the alphabet, {key}')
     if value == None:
       # Setting to None is equivalent to removing it due to having a __missing__ method
-      super().__delitem__(key)
+      if key in self:
+        super().__delitem__(key)
       return
     if not isinstance(value, SuffixTreeNode):
       raise ValueError(f'child must be a SuffixTreeNode or None, got {type(value)}') from None
@@ -76,13 +85,14 @@ class SuffixTreeNode:
   # Initialize here to allow type checking
   suffixLink: SuffixNodeReference = SuffixNodeReference()
 
-  def __init__(self: SuffixTreeNode, start: int, end: int | None = None, id: int = -1) -> SuffixTreeNode:
+  def __init__(self: SuffixTreeNode, leaf: bool, start: int, end: int | None = None, id: int = -1) -> SuffixTreeNode:
     '''Create a suffix tree node for string S'''
     global ALPHABET
     self._id:           int                   = id # ID to identify instances during printing
     self.start:         int                   = start
-    # For leaves end must be equal to last tree position. end = None indicates a leaf
+    # For leaves end must be equal to last tree position. leaf = True indicates a leaf
     self._end:          int | None            = end
+    self.leaf:          bool                  = leaf
     # Index of suffix in path from root to leaf. Non-leaves = -1
     self.suffixIndex:   int                   = -1
     # Node references
@@ -110,7 +120,8 @@ class SuffixTreeNode:
   @property
   def end(self: SuffixTreeNode) -> int:
     '''Get the end index of this node'''
-    if self.isLeaf() == True:
+    # Check if _end is set. Cannot rely on leaf because we may set end manually during tree tidy
+    if self._end == None:
       global LEAFEND
       return LEAFEND
     return self._end
@@ -118,8 +129,8 @@ class SuffixTreeNode:
   @end.setter
   def end(self: SuffixTreeNode, val: any) -> None:
     '''Set the end index of this node'''
-    if self.isLeaf():
-      raise Exception('Leaf node end is read-only')
+    # if self.isLeaf():
+    #   raise Exception('Leaf node end is read-only')
     if not isinstance(val, int):
       raise Exception(f'Unexpected type for end value, {type(val)}')
     self._end = val
@@ -136,7 +147,7 @@ class SuffixTreeNode:
 
   def isLeaf(self: SuffixTreeNode) -> bool:
     '''Whether this node is a leaf'''
-    return self._end == None
+    return self.leaf
 
   def isOutgoingEdge(self: SuffixTreeNode) -> bool:
     '''Whether this node has any outgoing edges'''
@@ -145,15 +156,20 @@ class SuffixTreeNode:
 
 class SuffixTree:
 
-  def __init__(self: SuffixTree, string: str) -> SuffixTree:
+  def __init__(self: SuffixTree, strings: list[str]) -> SuffixTree:
     '''Initialize and create a suffix tree from the input string'''
-    if not isInAlphabet(string):
-      raise Exception(f'Input string \'{string}\' not in alphabet')
-    if string[-1] != TERMINAL:
-      string += TERMINAL
-      print(f'Adding terminal, new string is \'{string}\'')
+    global TERMINAL
+    if (len(strings) > len(TERMINAL)):
+      raise Exception(f'Too many words given, maximum is {len(TERMINAL)}')
+    for i, string in enumerate(strings):
+      if not isValidWord(string):
+        raise Exception(f'Input string \'{string}\' has invalid characters')
+      if string[-1] not in TERMINAL:
+        string += TERMINAL[i]
+        print(f'Adding terminal, new string is \'{string.replace(TERMINAL[i], "$")}\'')
+        strings[i] = string
 
-    self._string: str             = string # Store string representation
+    self._string: str             = strings # Store string representation
     self._size:   int             = len(self.string) # Size of input string (excluding terminal)
     self._count:  int             = 0 # Number of nodes in the tree
     self.root:    SuffixTreeNode  = self._createRoot() # Tree root node (start = end = -1)
@@ -172,7 +188,12 @@ class SuffixTree:
   @property
   def string(self: SuffixTree) -> str:
     '''String syntax tree represents. Read-only'''
-    return self._string
+    return ''.join(self._string)
+
+  @property
+  def numstring(self: SuffixTree) -> int:
+    '''Number of strings in tree. Read-only'''
+    return len(self._string)
 
   @property
   def aEdgeChar(self: SuffixTree) -> str:
@@ -182,7 +203,7 @@ class SuffixTree:
   @property
   def count(self: SuffixTree) -> int:
     '''Number of nodes used by the suffix tree. Read-only'''
-    return self._count
+    return self._count # fix now we delete the terminal nodes, this will be incorrect
 
   def charAt(self: SuffixTree, i: int) -> str:
     '''Get active character'''
@@ -318,7 +339,7 @@ class SuffixTree:
       if self.aNode.children[self.aEdgeChar] == None:
         #! RULE 2 (new leaf is created, not requiring another node be split)
         self._debugPrint('Rule 2 - No split')
-        self.aNode.children[self.aEdgeChar] = self._createNode(pos)
+        self.aNode.children[self.aEdgeChar] = self._createNode(True, pos)
 
         # If internal node was made before, update suffix link to active node
         if last_new_node != None:
@@ -354,10 +375,10 @@ class SuffixTree:
         # We have fallen off the tree and must create a new internal node to contain the new node
         split_end = next_node.start + self.aLength - 1 # new end position for split
 
-        split_node = self._createNode(next_node.start, split_end) # new internal node
+        split_node = self._createNode(False, next_node.start, split_end) # new internal node
         self.aNode.children[self.aEdgeChar] = split_node # update active node child to point to new node
 
-        split_node.children[self.string[pos]] = self._createNode(pos) # new leaf out from split node
+        split_node.children[self.string[pos]] = self._createNode(True, pos) # new leaf out from split node
 
         next_node.start += self.aLength # push updated node's start past the new node
         # split_node.children[self.aEdgeChar] = next_node # update child of split node with edge of next_node's first char
@@ -403,22 +424,22 @@ class SuffixTree:
 
   def _createRoot(self: SuffixTree) -> SuffixTreeNode:
     '''Create and return a new root node'''
-    node = SuffixTreeNode(-1, -1, self._nextID())
+    node = SuffixTreeNode(False, -1, -1, self._nextID())
     node.suffixLink = node
     node.suffixIndex = -1
     return node
 
-  def _createNode(self: SuffixTree, start: int, end: int | None = None) -> SuffixTreeNode:
+  def _createNode(self: SuffixTree, leaf: bool, start: int, end: int | None = None) -> SuffixTreeNode:
     '''Create and return a node with specified start and end indicies'''
-    if type(start) not in (int,):
+    if not isinstance(leaf, int):
+      raise Exception(f'Unexpected type for leaf, {type(start)}')
+    if not isinstance(start, int):
       raise Exception(f'Unexpected type for start index, {type(start)}')
-    if type(end) not in (int,) and end != None:
+    if not isinstance(end, int) and end != None:
       raise Exception(f'Unexpected type for end index, {type(end)}')
 
-    # Update our state
-    leaf = end == None
     # Create new node
-    node = SuffixTreeNode(start, end, self._nextID())
+    node = SuffixTreeNode(leaf, start, end, self._nextID())
     # Set defaults
     node.suffixLink = self.root # all links go to root. Might get updated with other nodes during execution
     node.suffixIndex = -1 # internal node by default. Update at end
@@ -451,13 +472,17 @@ class SuffixTree:
       self._debugPrint(f' [{node.suffixIndex}]')
 
   def getSubstring(self: SuffixTree, i: int, j: int) -> str:
-    '''Get a substring of the input string based on start and stop indicies (inclusive)'''
+    '''Get a substring of the input string based on start and stop indicies (inclusive). Replaces all end-of-word terminals with $'''
+    global TERMINAL
     string = ""
-    # Check if root since range(-1, 0) results in [-1] which will be '$'
+    # Check if root since range(-1, 0) results in [-1] which will be an end of word terminal which is not technically correct
     if i == -1 and j == -1:
       return string
-    for k in range(i, j+1):
-      string += self.string[k]
+    # Splice the part of the string we want
+    string = self.string[i:j+1]
+    # Replace all terminals
+    for termnum in range(self.numstring):
+      string = string.replace(TERMINAL[termnum], '$')
     return string
 
   def getSubstringFromNode(self: SuffixTree, node: SuffixTreeNode) -> str:
@@ -508,7 +533,7 @@ class SuffixTree:
 
   def getSuffixArray(self: SuffixTree) -> list[int]:
     '''Returns the suffix array for the suffix tree'''
-    return self._getSuffixArray(self.root)[1:] # remove first element b/c it is always |S|
+    return self._getSuffixArray(self.root)
 
   def getStringSuffixArray(self: SuffixTree) -> list[str]:
     '''Returns the suffixes that make up the suffix array'''
@@ -540,16 +565,47 @@ class SuffixTree:
         l -= 1
     return lcp
 
+  def _tidyTree(self: SuffixTree, node: SuffixTreeNode) -> None:
+    if node == None:
+      return
+
+    if not node.isLeaf():
+      for c, child in node.children.items():
+        self._tidyTree(child)
+
+    else:
+      front_word = self.getSubstringFromNode(node).split('$')[0] # Remove all characters after the first terminal
+      node.end = node.start + len(front_word)
+
+    # Remove all but one of the terminal
+    # todo will this hurt SA/LCP calc b/c we are removing elements?
+    keep = True
+    for termnum in range(self.numstring):
+      if keep:
+        if node.children[TERMINAL[termnum]] != None:
+          keep = False
+      else:
+        node.children[TERMINAL[termnum]] = None
+
+  def tidyTree(self: SuffixTree) -> None:
+    '''Cleans the suffix tree to prevent suffix nodes from being cluttered due to the handling of multiple words'''
+    global TERMINAL
+    self._tidyTree(self.root)
+
+
+
 
 if __name__ == '__main__':
   print(f'Alphabet: {ALPHABET}')
 
-  string = input('Enter a string to compute GST of: ')
-  # string = 'abbc'
-  # string = 'abcabxabcd'
-  # string = 'geeksforgeeks'
-  # string = 'good'
-  # string = 'gatagaca'
+  string = input('Enter a string to compute GST of: ').split(' ')
+  # string = ['abbc']
+  # string = ['abcabxabcd']
+  # string = ['geeksforgeeks']
+  # string = ['good']
+  # string = ['gatagaca']
+  # string = ['atcgatcga', 'atcca', 'gaak']
+  # string = ['gaakak', 'gaakab']
 
   tree = SuffixTree(string)
 
@@ -557,6 +613,10 @@ if __name__ == '__main__':
   print(f"# Nodes = {tree.count}")
 
   print(f' == Suffix Tree ==')
+  tree.printSuffixTree(tree.root)
+
+  print(f' == Tidied Tree ==')
+  tree.tidyTree()
   tree.printSuffixTree(tree.root)
 
   print(f' == Metadata Arrays ==')
