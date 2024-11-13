@@ -166,7 +166,7 @@ class SuffixTree:
         raise Exception(f'Input string \'{string}\' has invalid characters')
       if string[-1] not in TERMINAL:
         string += TERMINAL[i]
-        print(f'Adding terminal, new string is \'{string.replace(TERMINAL[i], "$")}\'')
+        print(f'Adding terminal, new string is \'{string.replace(TERMINAL[i], f"${i}")}\'')
         strings[i] = string
 
     self._string: str             = strings # Store string representation
@@ -203,7 +203,7 @@ class SuffixTree:
   @property
   def count(self: SuffixTree) -> int:
     '''Number of nodes used by the suffix tree. Read-only'''
-    return self._count # fix now we delete the terminal nodes, this will be incorrect
+    return self._count
 
   def charAt(self: SuffixTree, i: int) -> str:
     '''Get active character'''
@@ -452,7 +452,7 @@ class SuffixTree:
       return
 
     if node != self.root:
-      self._debugPrint(self.getSubstringFromNode(node))
+      self._debugPrint(self._getSubstringFromNode(node))
 
     leaf = True
     for c in ALPHABET:
@@ -481,13 +481,22 @@ class SuffixTree:
     # Splice the part of the string we want
     string = self.string[i:j+1]
     # Replace all terminals
-    for termnum in range(self.numstring):
-      string = string.replace(TERMINAL[termnum], '$')
+    for i in range(self.numstring):
+      string = string.replace(TERMINAL[i], f'${i}')
     return string
 
-  def getSubstringFromNode(self: SuffixTree, node: SuffixTreeNode) -> str:
+  def _getSubstringFromNode(self: SuffixTree, node: SuffixTreeNode) -> str:
     '''Get a substring from a suffix tree node'''
     return self.getSubstring(node.start, node.end)
+
+  def _getFirstWordComponent(self: SuffixTree, pos: int) -> str:
+      '''Return word starting from pos up to the first terminal. Used to prevent string suffixes from exposing concatenated nature of multiple word support'''
+      global TERMINAL
+      full = self.string[pos:]
+      for i, c in enumerate(full):
+          if c in TERMINAL:
+              return self.getSubstring(pos, pos+i)
+      return full
 
   def printSuffixTree(self: SuffixTree, node: SuffixTreeNode | None, indent: int = 0) -> None:
     '''Print the suffix tree as a simplified tree. Done using DFS'''
@@ -495,12 +504,12 @@ class SuffixTree:
     if node == None:
       return
 
-    print('\t' * indent + f'\'{self.getSubstringFromNode(node)}\', {node} -> ', end='')
+    print('\t' * indent + f'\'{self._getSubstringFromNode(node)}\', {node} -> ', end='')
     link = node.suffixLink
     if link == self.root:
       print(f'ROOT') # shorthand for root
     elif link != None:
-      print(f'\'{self.getSubstringFromNode(link)}\', {link}')
+      print(f'\'{self._getSubstringFromNode(link)}\', {link}')
     else:
       print(f'None')
 
@@ -531,13 +540,29 @@ class SuffixTree:
 
     return lst
 
+  def _tidyTree(self: SuffixTree, node: SuffixTreeNode) -> None:
+    if node == None:
+      return
+
+    if not node.isLeaf():
+      for c, child in node.children.items():
+        self._tidyTree(child)
+
+    else:
+      front_word = self._getSubstringFromNode(node).split('$')[0] # Remove all characters after the first terminal
+      node.end = node.start + len(front_word)
+
+  def tidyTree(self: SuffixTree) -> None:
+    '''Cleans the suffix tree to prevent suffix nodes from being cluttered due to the handling of multiple words'''
+    self._tidyTree(self.root)
+
   def getSuffixArray(self: SuffixTree) -> list[int]:
     '''Returns the suffix array for the suffix tree'''
     return self._getSuffixArray(self.root)
 
   def getStringSuffixArray(self: SuffixTree) -> list[str]:
     '''Returns the suffixes that make up the suffix array'''
-    return [self.string[pos:] for pos in self.getSuffixArray()]
+    return [self._getFirstWordComponent(pos) for pos in self.getSuffixArray()]
 
   def getInverseSuffixArray(self: SuffixTree) -> list[int]:
     '''Returns the suffix array for the suffix tree'''
@@ -565,38 +590,10 @@ class SuffixTree:
         l -= 1
     return lcp
 
-  def _tidyTree(self: SuffixTree, node: SuffixTreeNode) -> None:
-    if node == None:
-      return
-
-    if not node.isLeaf():
-      for c, child in node.children.items():
-        self._tidyTree(child)
-
-    else:
-      front_word = self.getSubstringFromNode(node).split('$')[0] # Remove all characters after the first terminal
-      node.end = node.start + len(front_word)
-
-    # Remove all but one of the terminal
-    # todo will this hurt SA/LCP calc b/c we are removing elements?
-    keep = True
-    for termnum in range(self.numstring):
-      if keep:
-        if node.children[TERMINAL[termnum]] != None:
-          keep = False
-      else:
-        node.children[TERMINAL[termnum]] = None
-
-  def tidyTree(self: SuffixTree) -> None:
-    '''Cleans the suffix tree to prevent suffix nodes from being cluttered due to the handling of multiple words'''
-    global TERMINAL
-    self._tidyTree(self.root)
-
-
 
 
 if __name__ == '__main__':
-  print(f'Alphabet: {ALPHABET}')
+  print(f'Alphabet: {NONTERM}')
 
   string = input('Enter a string to compute GST of: ').split(' ')
   # string = ['abbc']
@@ -613,9 +610,6 @@ if __name__ == '__main__':
   print(f"# Nodes = {tree.count}")
 
   print(f' == Suffix Tree ==')
-  tree.printSuffixTree(tree.root)
-
-  print(f' == Tidied Tree ==')
   tree.tidyTree()
   tree.printSuffixTree(tree.root)
 
