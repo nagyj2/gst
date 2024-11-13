@@ -14,6 +14,9 @@ ALPHABET: str   = TERMINAL + NONTERM #! ORDER MATTERS
 LEAFEND:  int   = -1    # Required here so SuffixTree and SuffixTreeNode can access. Could be placed inside SuffixTree but then so would SuffixTreeNode, reducing usability and readability
 DEBUG:    bool  = False # Enables debug prints highlighting computations and steps taken
 
+# Validate settings
+assert not set(TERMINAL).intersection(set(NONTERM)), f'There must be no overlap between alphabet and terminal characters'
+
 def isValidWord(s: str) -> bool:
   '''Return whether the string is a valid word'''
   global NONTERM
