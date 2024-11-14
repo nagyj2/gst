@@ -10,27 +10,27 @@ import sys                          # handling command line arguments
 
 # Global variables
 TERMINAL: str   = stringlib.ascii_uppercase # Size limits the number of input words due to each needing a unique terminal
-NONTERM:  str   = stringlib.ascii_lowercase # Letters allowed in words
-ALPHABET: str   = TERMINAL + NONTERM #! ORDER MATTERS
+ALPHABET: str   = stringlib.ascii_lowercase # Letters allowed in words
+SYMBOLS:  str   = TERMINAL + ALPHABET #! ORDER MATTERS
 LEAFEND:  int   = -1    # Required here so SuffixTree and SuffixTreeNode can access. Could be placed inside SuffixTree but then so would SuffixTreeNode, reducing usability and readability
 DEBUG:    bool  = False # Enables debug prints highlighting computations and steps taken
 
 # Validate settings
-assert not set(TERMINAL).intersection(set(NONTERM)), f'There must be no overlap between alphabet and terminal characters'
+assert not set(TERMINAL).intersection(set(ALPHABET)), f'There must be no overlap between alphabet and terminal characters'
 
 def isValidWord(s: str) -> bool:
   '''Return whether the string is a valid word'''
-  global NONTERM
+  global ALPHABET
   for c in s:
-    if c not in NONTERM:
+    if c not in ALPHABET:
       return False
   return True
 
 def isInAlphabet(s: str) -> bool:
   '''Return whether all characters in s are within the alphabet'''
-  global ALPHABET
+  global SYMBOLS
   for c in s:
-    if c not in ALPHABET:
+    if c not in SYMBOLS:
       return False
   return True
 
@@ -91,7 +91,7 @@ class SuffixTreeNode:
 
   def __init__(self: SuffixTreeNode, leaf: bool, start: int, end: int | None = None, id: int = -1) -> SuffixTreeNode:
     '''Create a suffix tree node for string S'''
-    global ALPHABET
+    global SYMBOLS
     self._id:           int                   = id # ID to identify instances during printing
     self.start:         int                   = start
     # For leaves end must be equal to last tree position. leaf = True indicates a leaf
@@ -224,7 +224,7 @@ class SuffixTree:
 
   def _debugPrintRule1Changes(self: SuffixTree, node: SuffixTreeNode, i: int) -> int:
     '''DEBUG ONLY: Print all Rule 1 extensions for debug logging. i is the number of extensions. Returns number of next extension for printing'''
-    global ALPHABET
+    global SYMBOLS
     # This only does anything when debug is enabled. Shortcut return if DEBUG is not enabled
     if not DEBUG:
       return 0
@@ -240,7 +240,7 @@ class SuffixTree:
       return i + 1
 
     # Go through each child and print any Rule 1 changes
-    for c in ALPHABET:
+    for c in SYMBOLS:
       child = node.children[c]
       i = self._debugPrintRule1Changes(child, i)
 
@@ -451,7 +451,7 @@ class SuffixTree:
 
   def _setSuffixIndexes(self: SuffixTree | None, node: SuffixTreeNode, labelHeight: int) -> None:
     '''Sets the suffix index for each leaf node in the tree. Internal nodes keep their default index. Done using DFS'''
-    global ALPHABET
+    global SYMBOLS
     if node == None:
       return
 
@@ -459,7 +459,7 @@ class SuffixTree:
       self._debugPrint(self._getSubstringFromNode(node))
 
     leaf = True
-    for c in ALPHABET:
+    for c in SYMBOLS:
       child = node.children[c]
       # Check for any children
       if child != None:
@@ -504,7 +504,7 @@ class SuffixTree:
 
   def printSuffixTree(self: SuffixTree, node: SuffixTreeNode | None, indent: int = 0) -> None:
     '''Print the suffix tree as a simplified tree. Done using DFS'''
-    global ALPHABET
+    global SYMBOLS
     if node == None:
       return
 
@@ -517,13 +517,13 @@ class SuffixTree:
     else:
       print(f'None')
 
-    for c in ALPHABET:
+    for c in SYMBOLS:
       child = node.children[c]
       self.printSuffixTree(child, indent + 1)
 
   def _getSuffixArray(self: SuffixTree, node: SuffixTreeNode | None, lst: list[str] | None = None) -> list[str]:
     '''Recursive function to build suffix array in lst'''
-    global ALPHABET
+    global SYMBOLS
     # If node is empty, return input list
     if node == None:
       return lst
@@ -538,7 +538,7 @@ class SuffixTree:
       lst.append(node.suffixIndex)
 
     # Add each child to lst
-    for c in ALPHABET:
+    for c in SYMBOLS:
       child = node.children[c]
       lst = self._getSuffixArray(child, lst)
 
@@ -597,7 +597,7 @@ class SuffixTree:
 
 
 if __name__ == '__main__':
-  print(f'Alphabet: {NONTERM}')
+  print(f'Alphabet: {ALPHABET}')
   # Check for input words from cmd
   if len(sys.argv) > 1:
     string = sys.argv[1:]
