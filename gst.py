@@ -6,6 +6,7 @@
 from __future__ import annotations  # type annotations
 from operator import attrgetter     # used to determine equality of nodes
 import string as stringlib          # access sets of strings for alphabet creation
+import sys                          # handling command line arguments
 
 # Global variables
 TERMINAL: str   = stringlib.ascii_uppercase # Size limits the number of input words due to each needing a unique terminal
@@ -597,17 +598,25 @@ class SuffixTree:
 
 if __name__ == '__main__':
   print(f'Alphabet: {NONTERM}')
+  # Check for input words from cmd
+  if len(sys.argv) > 1:
+    string = sys.argv[1:]
+  else:
+    string = input('Enter strings to compute GST of: ').split(' ')
+    # string = ['abbc']
+    # string = ['abcabxabcd']
+    # string = ['geeksforgeeks']
+    # string = ['good']
+    # string = ['gatagaca']
+    # string = ['atcgatcga', 'atcca', 'gaak']
+    # string = ['abab', 'baba']
+    # string = ['gaakak', 'gaakab']
 
-  string = input('Enter a string to compute GST of: ').split(' ')
-  # string = ['abbc']
-  # string = ['abcabxabcd']
-  # string = ['geeksforgeeks']
-  # string = ['good']
-  # string = ['gatagaca']
-  # string = ['atcgatcga', 'atcca', 'gaak']
-  # string = ['gaakak', 'gaakab']
 
+  from time import time
+  start = time()
   tree = SuffixTree(string)
+  print(f'Completed in {time()-start}s')
 
   print(f' == String \'{tree.string}\' ==')
   print(f"# Nodes = {tree.count}")
