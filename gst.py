@@ -162,16 +162,16 @@ class _SuffixTree:
   '''Suffix Tree Model Object. Holds data and handles queries'''
   def __init__(self: _SuffixTree, string: str) -> _SuffixTree:
     '''Initialize and create a suffix tree from the input string'''
-    self._string: str            = string # Store string representation
-    self._size:   int            = len(self._string) # Size of input string (excluding terminal)
-    self._count:  int            = 0 # Number of nodes in the tree
-    self.root:    SuffixTreeNode = self._createRoot() # Tree root node (start = end = -1)
+    self._string: str             = string # Store string representation
+    self._size:   int             = len(self._string) # Size of input string (excluding terminal)
+    self._count:  int             = 0 # Number of nodes in the tree
+    self.root:    SuffixTreeNode  = self._createRoot() # Tree root node (start = end = -1)
 
     # Algorithm components
-    self._aNode:                  SuffixTreeNode = self.root # Active node (where traversal starts for an extension)
-    self._aEdge:                  int = -1                   # Active edge (which character is next during traversal)
-    self._aLength:                int = 0                    # Active length (how far we need to walk down during traversal)
-    self._remaining_suffix_count: int = 0                    # Remaining suffix count (how many suffixes need to be added)
+    self._aNode:                  SuffixTreeNode = self.root  # Active node (where traversal starts for an extension)
+    self._aEdge:                  int = -1                    # Active edge (which character is next during traversal)
+    self._aLength:                int = 0                     # Active length (how far we need to walk down during traversal)
+    self._remaining_suffix_count: int = 0                     # Remaining suffix count (how many suffixes need to be added)
 
     # Printing components (do not effect functionality but help print state)
     self._phase: int = -1 # Current phase
@@ -612,9 +612,8 @@ class SuffixTree:
 
   def getInverseSuffixArray(self: SuffixTree) -> list[int]:
     '''Returns the suffix array for the suffix tree'''
-
     sa = self.getSuffixArray()
-    isa = [0] * len(sa)
+    isa: list[int] = [0] * len(sa)
     for ind, pos in enumerate(sa):
       isa[pos] = ind
     return isa
