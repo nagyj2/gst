@@ -1,4 +1,4 @@
-# gst.py
+#!/usr/bin/env python3
 # Generalized Suffix Tree - Ukkonen's Algorithm
 # Visualizer: https://brenden.github.io/ukkonen-animation/
 #!! Inspiration: https://www.geeksforgeeks.org/ukkonens-suffix-tree-construction-part-1/
@@ -6,14 +6,14 @@
 from __future__ import annotations  # type annotations
 from operator import attrgetter     # used to determine equality of nodes
 import string as stringlib          # access sets of strings for alphabet creation
-import sys                          # handling command line arguments
+import argparse                     # handling command line arguments
 
 # Global variables
 TERMINAL: str   = stringlib.ascii_uppercase # Size limits the number of input words due to each needing a unique terminal
 ALPHABET: str   = stringlib.ascii_lowercase # Letters allowed in words
 SYMBOLS:  str   = TERMINAL + ALPHABET #! ORDER MATTERS
 LEAFEND:  int   = -1    # Required here so _SuffixTree and SuffixTreeNode can access. Could be placed inside _SuffixTree but then so would SuffixTreeNode, reducing usability and readability
-DEBUG:    bool  = False # Enables debug prints highlighting computations and steps taken
+DEBUG:    bool  = False # Enables walkthrough prints highlighting computations and steps taken
 
 # Validate settings
 assert not set(TERMINAL).intersection(set(ALPHABET)), f'There must be no overlap between alphabet and terminal characters'
@@ -532,6 +532,11 @@ class SuffixTree:
     self._tree._tidyTree(self.root) # truncate symbols in nodes
 
   @property
+  def input(self: SuffixTree) -> list[str]:
+    '''All input strings to the suffix tree'''
+    return [self.getSubstring(0, len(w)) for w in self._string]
+
+  @property
   def rawstring(self: SuffixTree) -> str:
     '''Raw string input to the suffix tree. Uses terminals. Read-only'''
     return ''.join(self._string)
@@ -604,7 +609,7 @@ class SuffixTree:
 
   def getSuffixArray(self: SuffixTree) -> list[int]:
     '''Returns the suffix array for the suffix tree'''
-    return self._tree._getSuffixArray(self.root)
+    return self._tree._getSuffixArray(self.root)[1:] # skip first element
 
   def getStringSuffixArray(self: SuffixTree) -> list[str]:
     '''Returns the suffixes that make up the suffix array'''
@@ -638,35 +643,135 @@ class SuffixTree:
 
 
 if __name__ == '__main__':
-  print(f'Alphabet: {ALPHABET}')
-  # Check for input words from cmd
-  if len(sys.argv) > 1:
-    string = sys.argv[1:]
+  parser = argparse.ArgumentParser(
+    prog = __file__,
+    description = 'Application to parse input strings into a generalized syntax tree.',
+  )
+
+  # Options
+  parser.add_argument(
+    '-a',
+    default = stringlib.ascii_lowercase,
+    dest = 'alphabet',
+    help = 'set the input symbol alphabet (default: %(default)s)'
+  )
+  parser.add_argument(
+    '-t',
+    default = stringlib.ascii_uppercase,
+    dest = 'terminal',
+    help = 'set the terminal symbol alphabet. Can be string of symbols or number of terminal symbols (default: %(default)s)'
+  )
+  parser.add_argument(
+    '-d',
+    default = False,
+    action = "store_true",
+    dest = 'displaystring',
+    help = 'print the string as part of the output (default: %(default)s)'
+  )
+  # Outputs
+  out_grp = parser.add_mutually_exclusive_group()
+  out_grp.add_argument(
+    '--walkthrough',
+    default = False,
+    action = "store_true",
+    dest = 'walkthrough',
+    help = 'show algorithm steps and return. cannot be used with -o'
+  )
+  out_grp.add_argument(
+    '-o',
+    default = 'tree',
+    choices = ['tree', 'sa', 'lcp', 'sfx'],
+    dest = 'output_type',
+    help = 'type of output. cannot be used with --walkthrough (default: %(default)s)'
+  )
+  # Inputs
+  in_grp = parser.add_mutually_exclusive_group(required = True)
+  in_grp.add_argument(
+    '-p',
+    default = 'none',
+    choices = ['none', 'abac', 'abab'],
+    dest = 'preset',
+    type = str,
+    help = 'set a preset string as input (default: %(default)s)'
+  )
+  in_grp.add_argument(
+    '-i',
+    dest = 'input',
+    action="store_true",
+    help = 'take input strings from stdin'
+  )
+  in_grp.add_argument(
+    '-w',
+    nargs = '+',
+    dest = 'word',
+    help = 'take input as a sequence of words'
+  )
+
+  args = parser.parse_args()
+
+  DEBUG = args.walkthrough
+
+  if args.alphabet:
+    ALPHABET = str(args.alphabet)
+
+  if args.terminal:
+    if args.  terminal.isdigit():
+      if int(args.terminal) > len(stringlib.ascii_uppercase):
+        raise Exception(f'maximum terminals is {len(stringlib.ascii_uppercase)}')
+      TERMINAL = str(stringlib.ascii_uppercase[:int(args.terminal)])
+    else:
+      TERMINAL = args.terminal
+
+  # Validate settings
+  assert not set(TERMINAL).intersection(set(ALPHABET)), f'There must be no overlap between alphabet and terminal characters'
+  SYMBOLS = TERMINAL + ALPHABET
+
+  # Parse input string
+  if args.preset == 'none':
+    if args.input == True:
+      string = input('input string> ').split(' ')
+    else:
+      string = args.word
   else:
-    string = input('Enter strings to compute GST of: ').split(' ')
-    # string = ['abbc']
-    # string = ['abcabxabcd']
-    # string = ['geeksforgeeks']
-    # string = ['good']
-    # string = ['gatagaca']
-    # string = ['atcgatcga', 'atcca', 'gaak']
-    # string = ['abab', 'baba']
-    # string = ['gaakak', 'gaakab']
+    if args.preset == 'abac':
+      string = ['abacababacabacaba']
+    elif args.preset == 'abab':
+      string = ['abaabaab', 'abbaabbab']
+      # string = ['geeksforgeeks']
+      # string = ['good']
+      # string = ['gatagaca']
+      # string = ['atcgatcga', 'atcca', 'gaak']
+      # string = ['abab', 'baba']
+      # string = ['gaakak', 'gaakab']
+      # string = ['hello', 'there']
 
+  if DEBUG:
+    print(f'Alphabet: {ALPHABET}')
 
-  from time import time
-  start = time()
   tree = SuffixTree(string)
-  print(f'Completed in {time()-start}s')
 
-  print(f' == String \'{tree.string}\' ==')
-  print(f"# Nodes = {tree.size}")
+  if args.displaystring:
+    print(f'input: {tree.input}')
 
-  print(f' == Suffix Tree ==')
-  tree.printSuffixTree(tree.root)
+  if DEBUG:
+    print(f"# Nodes = {tree.count}")
 
-  print(f' == Metadata Arrays ==')
-  print(f'Suffix Array: {tree.getSuffixArray()}')
-  print(f'Str.S. Array: {tree.getStringSuffixArray()}')
-  print(f'Inv Suffix:   {tree.getInverseSuffixArray()}')
-  print(f'LCP Array:    {tree.getLCPArray()}')
+    tree.printSuffixTree(tree.root)
+
+  else:
+    if args.output_type == 'tree':
+      tree.printSuffixTree(tree.root)
+    elif args.output_type in ('sa', 'lcp', 'sfx'):
+      if args.output_type == 'sa':
+        lst = tree.getSuffixArray()
+      elif args.output_type == 'lcp':
+        lst = tree.getLCPArray()
+      elif args.output_type == 'sfx': # get suffix array as strings
+        lst = tree.getStringSuffixArray()
+      else:
+        raise Exception(f'Unknown output array, {args.output_type}.')
+
+      print(f'{lst[0]}', end = '')
+      for elem in lst[1:]:
+        print(f' {elem}', end = '')
+      print(f'')
