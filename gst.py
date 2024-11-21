@@ -359,7 +359,7 @@ class _SuffixTree:
           self._debugPrint('Rule 3')
           # Update internal node suffix link
           if last_new_node != None and self._aNode != self.root:
-            last_new_node = self._aNode
+            last_new_node.suffixLink = self._aNode
             last_new_node = None
           #! APCFER3
           self._debugPrint('APCFER3')
