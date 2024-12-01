@@ -1,12 +1,14 @@
 # Generalized Suffix Tree
 This project implements Ukkonen's algorithm, creating a generalized suffix tree from an input set of words. The algorithm appends each input word with a unique suffix character to allow the algorithm to parse multiple strings, preventing suffixes from being improperly merged between different words. The application's output is the generalized suffix tree structure which can then be queried for the suffix array and LCP array of the input. The application was built with extension in mind so each component can easily be updated and extended to modify the algorithm's behaviour or extend its functionality. The program is structured in a manner which separates the view and controller from the data model to help facilitate this. The application supports walkthroughs for the extensions and phases the algorithm takes.
 
+This application an has an efficient implementation for Ukkonen's algorithm, suitable for retrieving string metadata arrays, such as suffix array and LCP array. This application can also be used as a teaching tool as it support writing all steps taken fron Ukkonen's algorithm.
+
 ## Introduction
 
 ### Background Information
 Given any string, it can be broken down into a number of suffixes by repeatedly removing the first letter in that word. The suffixes produced by a word can provide a tremendous amount of information and are critical to many algorithms in string processing and are usable in a wide variety of fields. Additionally, even more information can be extracted from the suffixes when provided in sorted order, such as retrieval of the LCP array. Therefore, efficient calculation of this structure is a vital step in any string algorithm.
 
-A trie is a structure which contains several nodes which are linked in a parent-child structure where any parent can have zero or more child nodes. The suffix tree starts from a root node which contains all other nodes within the tree. Therefore, each input string can insert all of its suffixes within the suffix tree. However, by assigning a node to a single letter results in tries which are extremely deep and space inefficient. Instead, the notion of a tree is created which collapses all nodes in a chain with one child into a single node (excluding the root). This allows the tree to model the desired structure while remaining efficient to traverse through. The cost of this optimization is more complex node insertion procedures which can split a node into two pieces in addition to appending a node to another node.
+A trie is a structure which contains several nodes which are linked in a parent-child structure where any parent can have zero or more child nodes. The suffix tree starts from a root node which contains all other nodes within the tree. Therefore, each input string can insert all of its suffixes within the suffix tree. However, by assigning a node to a single letter results in tries which are extremely deep and space inefficient. Instead, the notion of a tree is created which collapses all nodes in a chain with one child into a single node (excluding the root). This allows the tree to model the desired structure while remaining efficient to traverse through. The cost of this optimization is more complex node insertion procedures which can split a node into two pieces in addition to appending a node to another node. A suffix tree is a tree which contains edges which correspond to a particular string's suffixes. This allows for a sturctured way to track suffixes of a particular string. A generalized suffix tree  is a suffix tree but instead of representing a single string's suffixes it provides suffixes for a set of input strings.
 
 There are two types of nodes within the tree, internal and leaf nodes. An internal node represents a node with 1 or more children and a leaf node has no children. There is one special internal node which is the root node and it has no label and holds the rest of the tree. This node is always considered internal no matter how many children it has. Within Ukkonen's algorithm, the types of nodes represent different meanings. A leaf node provides a complete suffix when tracing the route from the leaf to the root whereas an internal node provides a way to structure the similarity in suffix structures. An interesting property within Ukkonen's algorithm is that once a node is a leaf node, it will always remain a leaf node. This is because the algorithm functions by extending each leaf node and then inserting missing suffixes into the suffix tree, inserting intermediate nodes as required. From how the lead and internal nodes are structured we can create a structure that can efficiently compute the suffix array in linear time.
 
@@ -37,7 +39,7 @@ The `_SuffixTree` class is the main data model of the application. This class en
 
 Lastly, the `SuffixTree` class is the view and controller for the application. This class wraps the `_SuffixTree` class manages the data contained within. It also provides ways to query and display the data for the user. This class is the main class meant to be exported and used by the user. This class supports suffix array and lowest common prefix array queries though it can easily be extended to support more. It also contains metadata for the input strings.
 
-This implementation is a static representation of the input strings, so it does not support modification of the structure after it has been created.
+This implementation is a static representation of the input strings, so it does not support modification of the structure after it has been created. The primary `SuffixTree` class implements the generalized suffix tree creation algorithm in linear time, the same as Ukkonen's algorithm.
 
 ## Program
 
@@ -103,6 +105,26 @@ The optional flags `-a`, `-t`, and `-d` can be combined with all other flags to 
 ./gst.py -p abac -t ABC   # define 3 terminals (max 3 input words and A, B, and C are excluded from the alphabet)
 ./gst.py -p abac -d       # display input words to algorithm
 ```
+
+When used as a library, the `SuffixTree` class is the primary class to interact with the contents of this application. This class must be supplied with a list of input strings. Below is an example of importing the class, initializing and retrieving data.
+
+```python
+import SuffixTree, stringSuffixTree from gst
+st = SuffixTree(['abcabxabcd'])
+print(st)
+sa = st.getSuffixArray()
+lcp = st.getLCPArray()
+```
+
+Below is a list of relevant class methods and properties for `SuffixTree`. `SuffixTree` supports being turned into a string with the `str()` function:
+- `words`: Return all input words.
+- `word(i)`: Return a specific input word from index.
+- `length`: Number of input characters.
+- `root`: Return the root node of the suffix tree.
+- `printSuffixTree`: Print a detailed representation of the suffix tree. Useful for seeing more details about the suffix tree.
+- `getSuffixArray`: Return the suffix array for the input strings.
+- `getStringSuffixArray`: Return the suffixes sorted in suffix array order.
+- `getLCPArray`: Return the LCP array from the input strings.
 
 ### Limitations
 This application does have some usage limitations which must be followed for proper execution. First and most imporantly, the suffix tree representation is assumed to be static from the algorithm. Once a suffix tree is created by a `SuffixTree` object, it will not allow modification to the representation. Secondly, only one tree can be processed at a time due to the global LEAFEND variable. To allow all leaves to grow and keep code simple, I needed to implement a global variale that could track the end of the string for all leaf nodes during processing. During `_SuffixTree._tidyTree` the reference to this global is removed, allowing more suffix trees to be created but two trees cannot be concurrently built due to sharing the global. This means that the `SuffixTree` class is not thread-safe. Lastly, due to terminals being represented as literal characters within the application, the number of words and characters of the alphabet are limited by the values within the `TERMINAL` global variable.

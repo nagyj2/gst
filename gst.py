@@ -617,11 +617,6 @@ class SuffixTree:
     words = self.words
     return len(''.join(words)) - len(words) # exclude 2nd character from tidied terminals
 
-  #@property
-  #def string(self: SuffixTree) -> str:
-  #  '''String input to the suffix tree. Uses processed terminals. Read-only'''
-  #  return self.getSubstring(0, len(self.rawstring)-1)
-
   @property
   def root(self: SuffixTree) -> SuffixTreeNode:
     '''Suffix tree root. Read-only'''
@@ -631,6 +626,9 @@ class SuffixTree:
   def size(self: SuffixTree) -> int:
     '''Number of suffix tree nodes. Read-only'''
     return self._tree.size
+
+  def __repr__(self: SuffixTree) -> str:
+    return stringSuffixTree(self)
 
   def getSubstring(self: SuffixTree, i: int, j: int) -> str:
     '''Get a substring of the input string based on start and stop indicies (inclusive). Replaces all end-of-word terminals with $'''
