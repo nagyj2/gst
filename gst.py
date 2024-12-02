@@ -776,6 +776,12 @@ def handle_inputs():
     dest = 'word',
     help = 'take input as a sequence of words'
   )
+  in_grp.add_argument(
+    '-f',
+    default = None,
+    dest = 'in_file',
+    help = 'take file contents as input string'
+  )
 
   return parser.parse_args()
 
@@ -810,6 +816,10 @@ if __name__ == '__main__':
   if args.preset == 'none':
     if args.input == True:
       string = input('input string> ').split(' ')
+    elif args.in_file != None:
+      with open(args.in_file, 'r') as f:
+        string = f.readlines()
+      string = list(filter(lambda s : len(s) != 0, (''.join(string).replace('\n', ' ').replace('\t', ' ')).split(' ')))
     else:
       string = args.word
   else:
