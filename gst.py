@@ -252,10 +252,11 @@ class _SuffixTree:
     return self.getSubstring(node.start, node.end)
 
   def _debugPrintExtension(self: _SuffixTree, n: int) -> None:
+    '''Print details about the current extension'''
     _debugPrint(f' == Extension {n}: \'{self._string[n-1:self._phase+1]}\' ({self._remaining_suffix_count} left after Rule 1) ==')
 
   def _debugPrintRule1Changes(self: _SuffixTree, node: SuffixTreeNode, i: int) -> int:
-    '''DEBUG ONLY: Print all Rule 1 extensions for debug logging. i is the number of extensions. Returns number of next extension for printing'''
+    '''Print all Rule 1 extensions for debug logging. i is the number of extensions. Returns number of next extension for printing'''
     global SYMBOLS
     # This only does anything when debug is enabled. Shortcut return if DEBUG is not enabled
     if not DEBUG:
@@ -602,19 +603,21 @@ class SuffixTree:
     return s
 
   @property
-  def words(self: SuffixTree) -> str:
+  def strings(self: SuffixTree) -> str:
     '''Return all input words. Read-only'''
     return tuple(self._tidy(w) for w in self._string)
 
   @property
-  def word(self: SuffixTree, i: int) -> str:
+  def string(self: SuffixTree, i: int) -> str:
     '''Return a specific input word. Read-only'''
-    return self.words[i]
+    if not isinstance(i, int):
+        raise Exception(f'Expected int, got {type(i)}')
+    return self.strings[i]
 
   @property
   def length(self: SuffixTree) -> str:
     '''Number of input characters. Ready-only'''
-    words = self.words
+    words = self.strings
     return len(''.join(words)) - len(words) # exclude 2nd character from tidied terminals
 
   @property
@@ -628,7 +631,7 @@ class SuffixTree:
     return self._tree.size
 
   def __repr__(self: SuffixTree) -> str:
-    return stringSuffixTree(self)
+    return stringSuffixTree(self.rawstring, self)
 
   def getSubstring(self: SuffixTree, i: int, j: int) -> str:
     '''Get a substring of the input string based on start and stop indicies (inclusive). Replaces all end-of-word terminals with $'''
@@ -659,7 +662,7 @@ class SuffixTree:
       return
 
     print('\t' * indent + f'\'{self.getSubstringFromNode(node)}\', {node} -> ', end='')
-    link = node.suffixLink
+    link: SuffixTreeNode = node.suffixLink
     if link == self.root:
       print(f'ROOT') # shorthand for root
     elif link != None:
@@ -708,14 +711,8 @@ class SuffixTree:
     return lcp
 
 
-
-if __name__ == '__main__':
-  def inlineSequencePrint(seq: list | tuple) -> None:
-    print(f'{seq[0]}', end = '')
-    for elem in seq[1:]:
-      print(f' {elem}', end = '')
-    print(f'')
-
+def handle_inputs():
+  '''Creates and then accepts input arguments from the command line'''
   parser = argparse.ArgumentParser(
     prog = __file__,
     description = 'Application to parse input strings into a generalized syntax tree.',
@@ -762,7 +759,7 @@ if __name__ == '__main__':
   in_grp.add_argument(
     '-p',
     default = 'none',
-    choices = ['none', 'abac', 'abab'],
+    choices = ['none', 'abac', 'abab', 'abca'],
     dest = 'preset',
     type = str,
     help = 'set a preset string as input (default: %(default)s)'
@@ -780,7 +777,17 @@ if __name__ == '__main__':
     help = 'take input as a sequence of words'
   )
 
-  args = parser.parse_args()
+  return parser.parse_args()
+
+
+if __name__ == '__main__':
+  def inlineSequencePrint(seq: list | tuple) -> None:
+    print(f'{seq[0]}', end = '')
+    for elem in seq[1:]:
+      print(f' {elem}', end = '')
+    print(f'')
+
+  args = handle_inputs()
 
   DEBUG = args.walkthrough
 
@@ -810,13 +817,8 @@ if __name__ == '__main__':
       string = ['abacababacabacaba']
     elif args.preset == 'abab':
       string = ['abaabaab', 'abbaabbab']
-      # string = ['geeksforgeeks']
-      # string = ['good']
-      # string = ['gatagaca']
-      # string = ['atcgatcga', 'atcca', 'gaak']
-      # string = ['abab', 'baba']
-      # string = ['gaakak', 'gaakab']
-      # string = ['hello', 'there']
+    elif args.preset == 'abca':
+      string = ['abcabxabcd']
 
   if DEBUG:
     print(f'Alphabet: {ALPHABET}')
@@ -825,7 +827,7 @@ if __name__ == '__main__':
 
   if args.displaystring:
     print('input: ', end='')
-    inlineSequencePrint(tree.words)
+    inlineSequencePrint(tree.strings)
 
   if DEBUG:
     print(f"# Nodes = {tree.size}")
