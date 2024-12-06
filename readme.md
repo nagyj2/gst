@@ -79,12 +79,13 @@ This application includes a shebang at the top of the source file allowing the c
 python gst.py -p abac   # use explicit python command
 ```
 
-To use the different application inputs, simply include the desired flag in the command call. Below shows usage of the `-p`, `-w` and `-i` flags. Note that the `-i` command will require input from standard input after execution and therefore does not take input from the command line.
+To use the different application inputs, simply include the desired flag in the command call. Below shows usage of the `-p`, `-i`, `-f` and `-w` flags. Note that the `-i` command will require input from standard input after execution and therefore does not take input from the command line.
 
 ```bash
 ./gst.py -p abac                # use preset
-./gst.py -w abaabacaba bacaaba  # use explicit words
 ./gst.py -i                     # use standard input
+./gst.py -f input_file.txt      # use file contents as input
+./gst.py -w abaabacaba bacaaba  # use explicit words
 ```
 
 Application outputs `--walkthrough` and `-o` are mutually exclusive and `-o` can take inputs `tree`, `sa`, `lcp`, `sfx`. By default, `--walkthrough` is disabled and `-o` is set to `tree`. These flags are included alongside the input flags and are shown below.

@@ -16,6 +16,7 @@ LEAFEND:  int   = -1    # Required here so _SuffixTree and SuffixTreeNode can ac
 DEBUG:    bool  = False # Enables walkthrough prints highlighting computations and steps taken
 
 # Validate settings
+assert not ' ' in TERMINAL and not ' ' in ALPHABET, f'Space cannot be an alphabet character or terminal'
 assert not set(TERMINAL).intersection(set(ALPHABET)), f'There must be no overlap between alphabet and terminal characters'
 
 def isValidWord(s: str) -> bool:
@@ -35,6 +36,7 @@ def isInAlphabet(s: str) -> bool:
   return True
 
 def _printSuffixTree(refstring: str, node: SuffixTreeNode, indent: list[bool], string: str) -> str:
+  '''Display a node and all its children in a suffix tree'''
   global TERMINAL
 
   # tidy replaces any terminals in the string with the corresponding $# for that terminal
@@ -69,9 +71,11 @@ def _printSuffixTree(refstring: str, node: SuffixTreeNode, indent: list[bool], s
   return string
 
 def stringSuffixTree(refstring: str, tree: SuffixTree) -> str:
+  '''Returns an input SiffoxTree as a string'''
   return _printSuffixTree(refstring, tree.root, [], '')
 
 def _debugPrint(*args, **kwargs):
+  '''Prints a string if debug is allowed. Gates all debug prints behind a single global variable'''
   global DEBUG
   if DEBUG:
     print(*args, **kwargs)
@@ -445,7 +449,7 @@ class _SuffixTree:
         assert(self._aNode != None)
 
   def _walkDownTree(self: _SuffixTree, node: SuffixTreeNode) -> bool:
-    '''Traverse down the active node'''
+    '''Traverse down the active node. Return whether a new node was traversed to'''
     # Walk down node depending on activePoint
     if self._aLength >= node.edgeLength:
       #! APCFWD
@@ -459,6 +463,7 @@ class _SuffixTree:
     return False
 
   def _nextID(self: _SuffixTree) -> int:
+    '''Return next available ID for created nodes'''
     self._count += 1
     return self._count-1
 
@@ -597,7 +602,8 @@ class SuffixTree:
     return ''.join(self._string)
 
   def _tidy(self: SuffixTree, s: str) -> str:
-    '''Tidies the input string to make it suitable for printing by replacing terminals'''
+    '''Tidies the input string to make it suitable for printing by replacing terminals. Replaces each terminal character in the string with $# where # is the order of that terminal in TERMINAL'''
+    global TERMINAL
     for i in range(len(TERMINAL)):
       s = s.replace(TERMINAL[i], f'${i}')
     return s
@@ -631,6 +637,7 @@ class SuffixTree:
     return self._tree.size
 
   def __repr__(self: SuffixTree) -> str:
+    '''Return a string representation of the suffix tree'''
     return stringSuffixTree(self.rawstring, self)
 
   def getSubstring(self: SuffixTree, i: int, j: int) -> str:
@@ -675,7 +682,8 @@ class SuffixTree:
       self._printSuffixTree(child, indent + 1)
 
   def printSuffixTree(self: SuffixTree) -> None:
-      self._printSuffixTree(self.root, 0)
+    '''Print a more detailed view of the suffix tree than the string representation'''
+    self._printSuffixTree(self.root, 0)
 
   def getSuffixArray(self: SuffixTree) -> list[int]:
     '''Returns the suffix array for the suffix tree'''
@@ -745,24 +753,22 @@ def handle_inputs():
     default = False,
     action = "store_true",
     dest = 'walkthrough',
-    help = 'show algorithm steps and return. cannot be used with -o'
+    help = 'show algorithm steps and return'
   )
   out_grp.add_argument(
     '-o',
     default = 'tree',
     choices = ['tree', 'sa', 'lcp', 'sfx'],
     dest = 'output_type',
-    help = 'type of output. cannot be used with --walkthrough (default: %(default)s)'
+    help = 'type of output (default: %(default)s)'
   )
   # Inputs
   in_grp = parser.add_mutually_exclusive_group(required = True)
   in_grp.add_argument(
     '-p',
-    default = 'none',
-    choices = ['none', 'abac', 'abab', 'abca'],
+    choices = ['abac', 'abab', 'abca'],
     dest = 'preset',
-    type = str,
-    help = 'set a preset string as input (default: %(default)s)'
+    help = 'take a preset string as input'
   )
   in_grp.add_argument(
     '-i',
@@ -788,6 +794,7 @@ def handle_inputs():
 
 if __name__ == '__main__':
   def inlineSequencePrint(seq: list | tuple) -> None:
+    '''Print a sequence to stdout element by element'''
     print(f'{seq[0]}', end = '')
     for elem in seq[1:]:
       print(f' {elem}', end = '')
@@ -795,13 +802,17 @@ if __name__ == '__main__':
 
   args = handle_inputs()
 
+  # Determine if all steps should be printed
   DEBUG = args.walkthrough
 
+  # Update alphabet if provided
   if args.alphabet:
     ALPHABET = str(args.alphabet)
 
+  # Update terminals if provided
   if args.terminal:
-    if args.  terminal.isdigit():
+    # if terminals is number, assign that many upper case characters. Otherwise, use provided string as terminals
+    if args.terminal.isdigit():
       if int(args.terminal) > len(stringlib.ascii_uppercase):
         raise Exception(f'maximum terminals is {len(stringlib.ascii_uppercase)}')
       TERMINAL = str(stringlib.ascii_uppercase[:int(args.terminal)])
@@ -809,11 +820,12 @@ if __name__ == '__main__':
       TERMINAL = args.terminal
 
   # Validate settings
+  assert not ' ' in TERMINAL and not ' ' in ALPHABET, f'Space cannot be an alphabet character or terminal'
   assert not set(TERMINAL).intersection(set(ALPHABET)), f'There must be no overlap between alphabet and terminal characters'
   SYMBOLS = TERMINAL + ALPHABET
 
   # Parse input string
-  if args.preset == 'none':
+  if args.preset == None:
     if args.input == True:
       string = input('input string> ').split(' ')
     elif args.in_file != None:
@@ -829,6 +841,8 @@ if __name__ == '__main__':
       string = ['abaabaab', 'abbaabbab']
     elif args.preset == 'abca':
       string = ['abcabxabcd']
+    else:
+      raise Exception(f'unknown string preset name, {args.preset}')
 
   if DEBUG:
     print(f'Alphabet: {ALPHABET}')
@@ -839,16 +853,16 @@ if __name__ == '__main__':
     print('input: ', end='')
     inlineSequencePrint(tree.strings)
 
+  # Return desired output
   if DEBUG:
     print(f"# Nodes = {tree.size}")
     print(stringSuffixTree(tree.rawstring, tree))
-    exit()
-
   else:
     if args.output_type == 'tree':
       print(stringSuffixTree(tree.rawstring, tree))
       #tree.printSuffixTree()
     elif args.output_type in ('sa', 'lcp', 'sfx'):
+      # These functions fill an array, so assign lst here and print after conditionals
       if args.output_type == 'sa':
         lst = tree.getSuffixArray()
       elif args.output_type == 'lcp':
